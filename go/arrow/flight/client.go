@@ -315,17 +315,6 @@ func (c *client) AuthenticateBasicToken(ctx context.Context, username, password 
 		return ctx, err
 	}
 
-	// Ensure stream is properly cleaned up
-	defer func() {
-		// Drain any remaining messages
-		for {
-			_, err := stream.Recv()
-			if err != nil {
-				break
-			}
-		}
-	}()
-
 	err = stream.CloseSend()
 	if err != nil {
 		return ctx, err
@@ -343,6 +332,14 @@ func (c *client) AuthenticateBasicToken(ctx context.Context, username, password 
 
 	meta := stream.Trailer()
 	md := metadata.Join(header, meta)
+
+	for {
+		_, err := stream.Recv()
+		if err != nil {
+			break
+		}
+	}
+
 	for _, token := range md.Get("authorization") {
 		if token != "" {
 			return metadata.AppendToOutgoingContext(ctx, "Authorization", token), nil
